@@ -42,10 +42,7 @@ Bu projenin temel amacı, büyük veri setleri barındıran ve 7/24 kesintisiz
 hizmet vermesi gereken kritik bilişim sistemlerinde yaşanabilecek olası veri
 kayıplarına karşı proaktif mimariler tasarlamaktır. Kurumsal düzeyde bir
 veritabanı yönetiminde, donanım arızaları, siber saldırılar (Ransomware
-vb.) veya insan kaynaklı hatalar
- 
-kaçınılmazdır. Bu bağlamda, İş Sürekliliği standartlarını sağlamak amacıyla veritabanını minimum veri kaybıyla (Minimum RPO - Recovery Point Objective) ve en kısa sürede (Minimum RTO - Recovery Time Objective) yeniden ayağa kaldırmak hedeflenmiştir.
-
+vb.) veya insan kaynaklı hatalar kaçınılmazdır. Bu bağlamda, İş Sürekliliği standartlarını sağlamak amacıyla veritabanını minimum veri kaybıyla (Minimum RPO - Recovery Point Objective) ve en kısa sürede (Minimum RTO - Recovery Time Objective) yeniden ayağa kaldırmak hedeflenmiştir.
 Proje kapsamında Microsoft SQL Server (MSSQL) altyapısı üzerinde Tam
 (Full), Artık (Differential) ve İşlem Günlüğü (Transaction Log) yedekleme
 stratejileri hiyerarşik olarak kurgulanmıştır. Senaryo gereği oluşturulan
@@ -58,65 +55,33 @@ Sistem testleri için gerçeğe yakın ve kritiklik derecesi yüksek bir senaryo
 kurgulamak adına Kaggle veri bilimi platformu üzerinden detaylı sağlık
 verileri içeren (Kalp Hastalıkları / Hasta Kayıtları) CSV formatında bir veri
 seti indirilmiştir. Sağlık verileri, doğası gereği geri döndürülemez kayıplara
-tahammülü olmayan hassas veriler
- 
-statüsündedir; bu nedenle felaketten
-kurtarma senaryosu için en ideal test ortamını sunmaktadır.
-
-Elde edilen ham veri seti, SQL Server Management Studio (SSMS)
-üzerinde yer alan 'Flat File Import Wizard' aracı kullanılarak yapılandırılmış
-ve KalpHastalik
- 
-veritabanına
- 
-dbo.HeartFail
- 
-tablosu olarak import edilmiştir.
-Veri tipleri
- 
-optimize edilerek tablonun bütünlüğü sağlanmıştır.
+tahammülü olmayan hassas veriler statüsündedir; bu nedenle felaketten kurtarma senaryosu için en ideal test ortamını sunmaktadır. Elde edilen ham veri seti, SQL Server Management Studio (SSMS) üzerinde yer alan 'Flat File Import Wizard' aracı kullanılarak yapılandırılmış ve KalpHastalik veritabanına dbo.HeartFail tablosu olarak import edilmiştir. Veri tipleri optimize edilerek tablonun bütünlüğü sağlanmıştır.
 
 # 3. Yedekleme Stratejileri ve Optimizasyon
 
-Zamana dayalı hassas kurtarma işlemlerinin yapılabilmesi için veritabanı
-mimarisinde öncelikle yapısal bir değişikliğe gidilmiş ve veritabanının
-Recovery Model
- 
-ayarı
- 
-Simple
- 
-moddan çıkartılarak
- 
-Full
- 
-moda alınmıştır. Bu
-sayede veritabanında yapılan her bir milisaniyelik hareketin log dosyasına
-yazılması garanti altına alınmıştır.
+Zamana dayalı hassas kurtarma işlemlerinin yapılabilmesi için veritabanı mimarisinde öncelikle yapısal bir değişikliğe gidilmiş ve veritabanının Recovery Model ayarı Simple moddan çıkartılarak Full moda alınmıştır. Bu sayede veritabanında yapılan her bir milisaniyelik hareketin log dosyasına yazılması garanti altına alınmıştır.
 
 Ardından, depolama maliyetleri ve işlemci yükü dengelenerek aşağıdaki üç
 katmanlı yedekleme adımları sırasıyla uygulanmıştır:
-•
+
  
-Tam Yedek (Full Backup):
+- Tam Yedek (Full Backup):
  
 Sistemin mevcut stabil halinin tam ve
 eksiksiz bir yedeği alınmıştır. Bu yedek, diğer tüm yedekleme
 stratejilerinin üzerine inşa edileceği temel referans noktasıdır.
-•
+
  
-Artı
-k Yedek (Differential Backup):
+- Artık Yedek (Differential Backup):
  
 Depolama alanından (Storage)
 ve yedekleme zamanından büyük ölçüde tasarruf sağlamak amacıyla
 kullanılmıştır. Sisteme yeni test kayıtları (INSERT) eklenmiş ve
 sadece son Tam Yedek'ten itibaren değişen verilerin (Data Extents)
 yedeği alınmıştır
-.
-•
- 
-İşlem Günlüğü (Transaction Log) Yedeği:
+
+
+- İşlem Günlüğü (Transaction Log) Yedeği:
  
 Felaket anında
 veritabanını "saniyesi saniyesine" eski haline döndürebilmek için
