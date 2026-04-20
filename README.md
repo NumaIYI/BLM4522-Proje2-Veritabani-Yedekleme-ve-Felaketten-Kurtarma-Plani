@@ -92,96 +92,33 @@ hayati öneme sahip olan log yedeği işlemi gerçekleştirilmiştir.
 Kurgulanan mimarinin sağlamlığını test etmek, kötü niyetli bir siber saldırıyı
 veya yetkili bir sistem yöneticisinin yapabileceği geri dönülemez bir
 dikkatsizliği simüle etmek amacıyla, veritabanındaki tüm hasta kayıtları
-kasıtlı olarak yok edilmiştir.
+kasıtlı olarak yok edilmiştir. Bunun için SSMS üzerinden DELETE FROM dbo.heartFail; komutu çalıştırılmıştır. İşlem sonucunda veritabanı tamamen boşaltılarak "Kritik Veri Kaybı" durumu başlatılmıştır.
+# 5. Point-in-Time Restore İşlemi (Kurtarma)
 
-Bunun için SSMS üzerinden
- 
-DELETE FROM dbo.heartFail; komutu
-çalıştırılmıştır. İşlem sonucun
-da
- 
-veritabanı tamamen boşaltılarak "Kritik Veri
-Kaybı"
- 
-durumu başlatılmıştır.
-# 5. Point-in-
-Time Restore İşlemi (Kurtarma)
+Kritik veri kaybı yaşandıktan hemen sonra önceden planlanan acil durum protokolü devreye alınmıştır. Kurtarma işleminin MSSQL tarafından engellenmemesi için öncelikle arka plandaki tüm aktif kullanıcı bağlantıları ve açık sorgular (Close existing connections parametresi ile) zorla sonlandırılmıştır. Ardından Restore Database > Timeline mimarisi kullanılmıştır. Sistemde alınan zincirleme yedekler (Full + Diff + Log) sayesinde, verilerin silindiği an tespit edilmiş ve silinme komutunun çalıştırılmasından saniyeler öncesindeki spesifik saat dilimi manuel olarak seçilerek hedef veritabanı başarıyla o ana geri döndürülmüştür.
+# 6. Sürdürülebilirlik İçin Çok Katmanlı Otomasyon
 
-Kritik veri kaybı yaşandıktan hemen sonra önceden planlanan acil durum
-protokolü devreye alınmıştır. Kurtarma işleminin MSSQL tarafından
-engellenmemesi
- 
-için öncelikle arka plandaki tüm aktif kullanıcı bağlantıları
-ve açık sorgular (
-Close existing connections parametresi ile) zorla
-sonlandırılmıştır.
+Sistemin güvenliğini anlık testlerin ötesine taşımak ve insan inisiyatifini ortadan kaldırmak amacıyla tüm yedekleme süreçleri otomatize edilmiştir. T-SQL scriptleri kullanılarak dinamik dosya adlandırma (o anki tarih ve saati GETDATE()ile dosya ismine ekleme) yapısı kurulmuştur. Hazırlanan bu dinamik scriptler, msdb.dbo.sp_add_job prosedürleri ile SQL Server Agent servisine "Görev" (Job) olarak tanımlanmıştır:
 
-Ardından
- 
-Restore Database > Timeline
- 
-mimarisi kullanılmıştır. Sistemde
-alınan zincirleme yedekler (Full + Diff + Log) sayesinde, verilerin silindiği an
-tespit edilmiş ve silinme komutunun çalıştırılmasından saniyeler
-öncesindeki spesifik saat dilimi manuel olarak seçilerek hedef veritabanı
-başarıyla o ana geri döndürülmüştür.
-# 6. Sürdürülebilirlik İçin Çok Katmanlı Otoma
-syon
 
-Sistemin güvenliğini anlık testlerin ötesine taşımak ve insan inisiyatifini
-ortadan kaldırmak amacıyla tüm yedekleme süreçleri otomatize edilmiştir.
+ 
+- Haftalık Görev:
+ 
+Her Pazar gece yarısı "Tam Yedek" alınması zamanlanmıştır.
 
-T-
-SQL scriptleri kullanılarak dinamik dosya adlandırma (o anki tarih ve saati
-GETDATE()
  
-ile dosya ismine ekleme) yapısı kurulmuştur. Hazırlanan bu
-dinamik scriptler, msdb.dbo.sp_add_job
+- Günlük Görev:
  
-prosedürleri ile
- 
-SQL Server Agent
-servisine "Görev" (Job) olarak tanımlanmıştır:
+Her gün 23:00'da gün içindeki değişimleri kapsayan "Fark Yedeği" zamanlanmıştır.
 
-•
- 
-Haftalık Görev:
- 
-Her Pazar gece yarısı "Tam Yedek" alınması
-zamanlanmıştır.
-•
- 
-Günlük Görev:
- 
-Her gün 23:00'da gün içindeki değişimleri kapsayan
-"Fark Yedeği" zamanlanmıştır.
 
-•
  
-Saatlik Görev:
+- Saatlik Görev:
  
-Olası bir çökmede maksimum veri kaybını 1 saat ile
-sınırlandırmak için düzenli "Log Yedeği" görevleri aktifleştirilmiştir.
+Olası bir çökmede maksimum veri kaybını 1 saat ile sınırlandırmak için düzenli "Log Yedeği" görevleri aktifleştirilmiştir.
 # 7. Sonuç
 
-Yapılan kapsamlı Point
--in-
-Time Restore işlemi sonrasında hedef tablo
-tekrar sorgulanmış (
-SELECT TOP 1000 ROWS
-) ve silinen binlerce sağlık
-kaydının eksiksiz, veri bozulması
- 
-yaşanmadan sisteme geri döndüğü
-doğrulanmıştır.
+Yapılan kapsamlı Point-in-Time Restore işlemi sonrasında hedef tablo tekrar sorgulanmış (SELECT TOP 1000 ROWS) ve silinen binlerce sağlık kaydının eksiksiz, veri bozulması yaşanmadan sisteme geri döndüğü doğrulanmıştır.
 
-Ek olarak kurulan SQL Server Agent otomasyonları ile sistem, gelecekteki
-felaketlere karşı kendi kendini yedekleyen otonom bir yapıya
-kavuşturulmuştur. Bu proje çalışması ile MSSQL üzerinde sürdürülebilir,
-güvenilir ve kurumsal standartlara
- 
-uygun bir felaketten kurtarma senaryosu
-başarıyla uçtan uca test edilmiş ve uygulanmıştır.
-
-Bu proje ile MSSQL üzerinde sürdürülebilir bir felaketten kurtarma
+Ek olarak kurulan SQL Server Agent otomasyonları ile sistem, gelecekteki felaketlere karşı kendi kendini yedekleyen otonom bir yapıya kavuşturulmuştur. Bu proje çalışması ile MSSQL üzerinde sürdürülebilir, güvenilir ve kurumsal standartlara uygun bir felaketten kurtarma senaryosu başarıyla uçtan uca test edilmiş ve uygulanmıştır. Bu proje ile MSSQL üzerinde sürdürülebilir bir felaketten kurtarma
 senaryosu başarıyla test edilmiştir.
